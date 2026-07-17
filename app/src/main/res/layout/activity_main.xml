@@ -13,7 +13,7 @@
             android:id="@+id/label_brightness_cap"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceBody1" />
+            android:textAppearance="?android:attr/textAppearanceMedium" />
 
         <SeekBar
             android:id="@+id/slider_brightness_cap"
@@ -25,7 +25,7 @@
             android:id="@+id/label_sensitivity"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceBody1" />
+            android:textAppearance="?android:attr/textAppearanceMedium" />
 
         <SeekBar
             android:id="@+id/slider_sensitivity"
@@ -37,7 +37,7 @@
             android:id="@+id/label_auto_off"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="?attr/textAppearanceBody1" />
+            android:textAppearance="?android:attr/textAppearanceMedium" />
 
         <SeekBar
             android:id="@+id/slider_auto_off"
