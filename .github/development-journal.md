@@ -20,7 +20,7 @@ The nightly workflow deletes and recreates the `nightly` GitHub Release on every
 
 ## Core Features
 
-- Foreground service that persists across app close
-- Brightness cap: 80% on battery, 100% on AC
-- Boot-start via `RECEIVE_BOOT_COMPLETED`
+- Foreground service that persists across app close and starts on boot
+- On AC: brightness cap lifted to 100%, screen turned on
+- On battery: brightness capped at configurable % (default 80%), optional auto-off timer after configurable idle minutes
 - No UI beyond the persistent notification

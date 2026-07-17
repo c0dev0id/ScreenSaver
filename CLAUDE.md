@@ -4,7 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Android foreground service app that caps automatic screen brightness at 80% while on battery and allows 100% when on AC power. Intended for motorcyclists who need brightness-limiting while riding.
+Android foreground service app for motorcycle navigation tablets. Manages screen brightness and power based on AC state:
+
+- **On AC**: auto-brightness allowed up to 100%, screen turned on
+- **On battery**: auto-brightness capped at configurable % (default 80%), optional auto-off timer after configurable minutes
+
+Use case: tablets left in sunlight after the motorcycle is turned off drain the battery quickly at full brightness. This app prevents that.
 
 ## Build Constraints
 
@@ -26,12 +31,15 @@ Required GitHub secrets: `SIGNING_KEYSTORE_BASE64`, `SIGNING_KEYSTORE_PASSWORD`,
 
 ## Architecture (planned)
 
-- **Foreground Service**: Android `Service` component that keeps a persistent notification and manages `Settings.System.SCREEN_BRIGHTNESS` or the `WindowManager` brightness flag
-- **Battery/AC detection**: `BroadcastReceiver` listening for `ACTION_POWER_CONNECTED` / `ACTION_POWER_DISCONNECTED` (or `ACTION_BATTERY_CHANGED`) to switch brightness caps
-- No UI beyond the notification; the service starts on boot
+- **Foreground Service**: Android `Service` with persistent notification; manages `Settings.System.SCREEN_BRIGHTNESS` and screen on/off state
+- **AC detection**: `BroadcastReceiver` on `ACTION_POWER_CONNECTED` / `ACTION_POWER_DISCONNECTED` drives all state transitions
+- **Auto-off timer**: scheduled via `Handler.postDelayed` after AC loss; cancelled on reconnect
+- **Settings**: brightness cap % and timer duration are user-configurable
+- No UI beyond the notification; service starts on boot
 
 ## Permissions needed in AndroidManifest
 
-- `WRITE_SETTINGS` (requires user grant via system dialog — not a normal runtime permission)
+- `WRITE_SETTINGS` (requires user grant via system Settings screen — not a normal runtime permission; check `Settings.System.canWrite()` at startup)
 - `FOREGROUND_SERVICE`
 - `RECEIVE_BOOT_COMPLETED`
+- `WAKE_LOCK` (needed to turn the screen on via `PowerManager`)
