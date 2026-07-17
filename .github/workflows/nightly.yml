@@ -1,0 +1,62 @@
+name: Nightly Release
+
+on:
+  push:
+    branches: [ main ]
+
+# Latest push wins; cancel an in-flight nightly so the tag never races.
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+
+      # gradle-wrapper.jar is not committed (binary). Generate the wrapper
+      # using the Gradle installation provided by setup-gradle above.
+      - name: Generate Gradle wrapper
+        run: gradle wrapper --gradle-version=8.8
+
+      - name: Decode signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+
+      - name: Build signed release APKs
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease
+
+      - name: Publish rolling nightly pre-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Drop the previous nightly release and its tag so the tag can move
+          # to this commit. First run has nothing to delete, hence the '|| true'.
+          gh release delete nightly --yes --cleanup-tag || true
+          gh release create nightly \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Nightly build" \
+            --notes "Automated nightly build from ${GITHUB_SHA:0:7}." \
+            app/build/outputs/apk/release/*.apk
