@@ -9,3 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Initial project skeleton with README
 - GitHub Actions nightly release workflow (signed APK, rolling `nightly` pre-release tag)
+- Full Android project scaffold: Gradle 8.8 / AGP 8.5.2 / Kotlin 1.9.25, minSdk 34
+- `BrightnessController`: EMA low-pass filter on lux readings, log-scale lux→brightness curve, animated stepping toward target
+- `BrightnessService`: foreground service managing light sensor, AC state detection, auto-off timer via `SCREEN_OFF_TIMEOUT`, screen wake on AC connect
+- `BootReceiver`: starts service on device boot
+- `MainActivity`: settings screen with sliders for brightness cap, reaction speed, and auto-off timer

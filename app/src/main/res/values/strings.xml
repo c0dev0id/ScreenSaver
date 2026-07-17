@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Screen Dimmer</string>
+    <string name="start_service">Start</string>
+    <string name="stop_service">Stop</string>
+    <string name="permission_required">Write settings permission is required</string>
+</resources>
