@@ -14,8 +14,11 @@ class BrightnessController(private val resolver: ContentResolver) {
     var brightLux: Float = 50_000f
 
     private var latestLux = -1f
-    private var smoothedLux = -1f
-    private var targetBrightness = -1
+
+    var smoothedLux = -1f
+        private set
+    var targetBrightness = -1
+        private set
 
     companion object {
         const val MIN_ALPHA = 0.001f

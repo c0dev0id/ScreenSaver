@@ -40,10 +40,13 @@ class BrightnessService : Service(), SensorEventListener {
         }
     }
 
+    private var tickCount = 0
+
     private val tickRunnable = object : Runnable {
         override fun run() {
             applyPrefs()
             controller.tick()
+            if (++tickCount % NOTIF_UPDATE_TICKS == 0) updateNotification()
             handler.postDelayed(this, TICK_MS)
         }
     }
@@ -176,8 +179,11 @@ class BrightnessService : Service(), SensorEventListener {
             Intent(this, BrightnessService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE
         )
-        val text = if (onAc) "On AC — full brightness"
-                   else "On battery — cap ${(Prefs.brightnessCap * 100).toInt()}%"
+        val power = if (onAc) "On AC — full brightness"
+                    else "On battery — cap ${(Prefs.brightnessCap * 100).toInt()}%"
+        val text = if (controller.targetBrightness >= 0)
+            "$power · ${"%.1f".format(controller.smoothedLux)} lx → ${controller.targetBrightness}/255"
+        else power
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Screen Dimmer")
             .setContentText(text)
@@ -196,5 +202,6 @@ class BrightnessService : Service(), SensorEventListener {
         private const val NOTIF_ID = 1
         private const val CHANNEL_ID = "brightness_service"
         private const val TICK_MS = 200L
+        private const val NOTIF_UPDATE_TICKS = 25  // refresh status line every 5 s
     }
 }
