@@ -16,9 +16,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `MainActivity`: settings screen with sliders for brightness cap, reaction speed, and auto-off timer
 - Live light-sensor readout in the settings screen
 - Configurable dark point / light point for the brightness curve: below the dark point (default 10 lx) the screen stays at minimum brightness, above the light point (default 50k lx) it reaches maximum; both on log-scale sliders
+- Notification shows the service's live state (smoothed lux → brightness target), refreshed every 5 s
 
 ### Changed
 - Reaction speed range shifted 10× slower: EMA alpha now 0.001–0.01 (log-scale slider, default 0.003) instead of 0.01–0.30; the old slowest setting is the new fastest. Stored values from older versions are clamped into the new range
 
 ### Fixed
 - Brightness could get stuck (e.g. never dimming to minimum in a dark room): the lux EMA was only advanced on sensor events, but light sensors stop reporting in static conditions. The EMA now advances every 200 ms tick toward the latest reading, making reaction speed time-based (~20 s time constant at Fast, ~3 min at Slow)
+- Persistent light changes no longer take many minutes to settle: when the raw reading stays >2× away from the smoothed value for over 10 s, the filter speeds up 20× (catch-up mode) until caught up. Brief changes (shadows, headlights) are still smoothed at the configured reaction speed
+- Minimum brightness lowered from 5/255 to 1/255: the Android brightness slider is gamma-corrected, so the old floor of 5 sat at ~20% slider position and immediately overrode any manually set lower brightness — the screen never went truly dim in the dark

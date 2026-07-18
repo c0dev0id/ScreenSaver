@@ -14,17 +14,29 @@ class BrightnessController(private val resolver: ContentResolver) {
     var brightLux: Float = 50_000f
 
     private var latestLux = -1f
-    private var smoothedLux = -1f
-    private var targetBrightness = -1
+    private var deviationTicks = 0
+
+    var smoothedLux = -1f
+        private set
+    var targetBrightness = -1
+        private set
 
     companion object {
         const val MIN_ALPHA = 0.001f
         const val MAX_ALPHA = 0.01f
         const val DEFAULT_ALPHA = 0.003f
-        private const val MIN_BRIGHTNESS = 5
+        // The Android brightness slider is gamma-corrected: linear value 5/255
+        // already sits at ~20% slider position and is visibly bright on some
+        // panels. 1 is the framework slider's own minimum (0 can mean "off"
+        // or be rejected depending on the display driver).
+        private const val MIN_BRIGHTNESS = 1
         private const val MAX_BRIGHTNESS = 255
         // Keep the curve's log-scale span from collapsing if dark/bright points cross
         private const val MIN_LOG_SPAN = 0.3f
+        private const val CATCHUP_DEVIATION = 0.3f     // log10 decades, ~2x
+        private const val CATCHUP_DELAY_TICKS = 50     // 10 s at 200 ms ticks
+        private const val CATCHUP_FACTOR = 20f
+        private const val MAX_CATCHUP_ALPHA = 0.05f
     }
 
     // Light sensors only report on change, so this may not be called for long
@@ -43,7 +55,8 @@ class BrightnessController(private val resolver: ContentResolver) {
 
     fun tick() {
         if (latestLux >= 0f && smoothedLux >= 0f) {
-            smoothedLux = alpha * latestLux + (1f - alpha) * smoothedLux
+            val a = effectiveAlpha()
+            smoothedLux = a * latestLux + (1f - a) * smoothedLux
             targetBrightness = luxToBrightness(smoothedLux)
         }
         if (targetBrightness < 0) return
@@ -62,6 +75,19 @@ class BrightnessController(private val resolver: ContentResolver) {
             Settings.System.SCREEN_BRIGHTNESS_MODE,
             Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
         )
+    }
+
+    // A pure EMA makes "slow reaction" mean slow even for permanent changes:
+    // walking into a dark room would take 15+ minutes to reach the dark target.
+    // When the raw reading stays far from the smoothed value (>2x, i.e. 0.3
+    // log-decades) for more than 10 s, the change is not a passing shadow -
+    // speed the filter up until it has caught up.
+    private fun effectiveAlpha(): Float {
+        val deviation = abs(log10(latestLux + 1f) - log10(smoothedLux + 1f))
+        if (deviation > CATCHUP_DEVIATION) deviationTicks++ else deviationTicks = 0
+        return if (deviationTicks > CATCHUP_DELAY_TICKS)
+            (alpha * CATCHUP_FACTOR).coerceAtMost(MAX_CATCHUP_ALPHA)
+        else alpha
     }
 
     private fun maxBrightness() =
