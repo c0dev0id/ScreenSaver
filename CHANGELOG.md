@@ -16,10 +16,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `MainActivity`: settings screen with sliders for brightness cap, reaction speed, and auto-off timer
 - Live light-sensor readout in the settings screen
 - Configurable dark point / light point for the brightness curve: below the dark point (default 10 lx) the screen stays at minimum brightness, above the light point (default 50k lx) it reaches maximum; both on log-scale sliders
-- Notification shows the service's live state (smoothed lux → brightness target), refreshed every 5 s
+- Notification shows the service's live state (smoothed lux → brightness target), reposted only when the text changes
+- Battery-optimization exemption requested on launch so Doze doesn't throttle the service on battery
 
 ### Changed
-- Reaction speed range shifted 10× slower: EMA alpha now 0.001–0.01 (log-scale slider, default 0.003) instead of 0.01–0.30; the old slowest setting is the new fastest. Stored values from older versions are clamped into the new range
+- Reaction speed range shifted 10× slower; the old slowest setting is the new fastest. Stored values from older versions are clamped into the new range
+- Tick period raised from 200 ms to 5 s; per-tick EMA alpha rescaled ×25 (0.025–0.25, default 0.075) so wall-clock reaction speeds are unchanged (~20 s time constant at Fast, ~3 min at Slow). Brightness steps half the remaining distance per tick
 
 ### Fixed
 - Brightness could get stuck (e.g. never dimming to minimum in a dark room): the lux EMA was only advanced on sensor events, but light sensors stop reporting in static conditions. The EMA now advances every 200 ms tick toward the latest reading, making reaction speed time-based (~20 s time constant at Fast, ~3 min at Slow)

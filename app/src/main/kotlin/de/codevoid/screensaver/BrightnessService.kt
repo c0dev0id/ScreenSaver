@@ -30,6 +30,15 @@ class BrightnessService : Service(), SensorEventListener {
     private var onAc = false
     private var started = false
     private var previousTimeout = -1
+    private var lastNotifiedText: String? = null
+
+    private val stopIntent by lazy {
+        PendingIntent.getService(
+            this, 0,
+            Intent(this, BrightnessService::class.java).setAction(ACTION_STOP),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+    }
 
     private val acReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -40,14 +49,12 @@ class BrightnessService : Service(), SensorEventListener {
         }
     }
 
-    private var tickCount = 0
-
     private val tickRunnable = object : Runnable {
         override fun run() {
             applyPrefs()
             controller.tick()
-            if (++tickCount % NOTIF_UPDATE_TICKS == 0) updateNotification()
-            handler.postDelayed(this, TICK_MS)
+            updateNotification()
+            handler.postDelayed(this, BrightnessController.TICK_MS)
         }
     }
 
@@ -60,6 +67,12 @@ class BrightnessService : Service(), SensorEventListener {
         controller = BrightnessController(contentResolver)
         sensorManager = getSystemService(SensorManager::class.java)
         lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+        val nm = getSystemService(NotificationManager::class.java)
+        if (nm.getNotificationChannel(CHANNEL_ID) == null) {
+            nm.createNotificationChannel(
+                NotificationChannel(CHANNEL_ID, "Brightness Service", NotificationManager.IMPORTANCE_LOW)
+            )
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -133,7 +146,6 @@ class BrightnessService : Service(), SensorEventListener {
         controller.darkLux = Prefs.darkLux
         controller.brightLux = Prefs.brightLux
         controller.capFraction = if (onAc) 1.0f else Prefs.brightnessCap
-        controller.onCurveChanged()
     }
 
     private fun scheduleAutoOff() {
@@ -167,23 +179,17 @@ class BrightnessService : Service(), SensorEventListener {
         ).acquire(3_000L)
     }
 
-    private fun buildNotification(): Notification {
-        val nm = getSystemService(NotificationManager::class.java)
-        if (nm.getNotificationChannel(CHANNEL_ID) == null) {
-            nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Brightness Service", NotificationManager.IMPORTANCE_LOW)
-            )
-        }
-        val stopIntent = PendingIntent.getService(
-            this, 0,
-            Intent(this, BrightnessService::class.java).setAction(ACTION_STOP),
-            PendingIntent.FLAG_IMMUTABLE
-        )
+    private fun notificationText(): String {
         val power = if (onAc) "On AC — full brightness"
                     else "On battery — cap ${(Prefs.brightnessCap * 100).toInt()}%"
-        val text = if (controller.targetBrightness >= 0)
-            "$power · ${"%.1f".format(controller.smoothedLux)} lx → ${controller.targetBrightness}/255"
+        return if (controller.targetBrightness >= 0)
+            "$power · ${formatLux(controller.smoothedLux)} → ${controller.targetBrightness}/255"
         else power
+    }
+
+    private fun buildNotification(): Notification {
+        val text = notificationText()
+        lastNotifiedText = text
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Screen Dimmer")
             .setContentText(text)
@@ -193,7 +199,10 @@ class BrightnessService : Service(), SensorEventListener {
             .build()
     }
 
+    // Reposting an identical notification every tick would churn the shade
+    // (and battery) for nothing — skip when the text is unchanged.
     private fun updateNotification() {
+        if (notificationText() == lastNotifiedText) return
         getSystemService(NotificationManager::class.java).notify(NOTIF_ID, buildNotification())
     }
 
@@ -201,7 +210,5 @@ class BrightnessService : Service(), SensorEventListener {
         const val ACTION_STOP = "de.codevoid.screensaver.STOP"
         private const val NOTIF_ID = 1
         private const val CHANNEL_ID = "brightness_service"
-        private const val TICK_MS = 200L
-        private const val NOTIF_UPDATE_TICKS = 25  // refresh status line every 5 s
     }
 }
