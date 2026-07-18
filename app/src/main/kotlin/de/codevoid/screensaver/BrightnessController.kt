@@ -13,6 +13,7 @@ class BrightnessController(private val resolver: ContentResolver) {
     var darkLux: Float = 10f
     var brightLux: Float = 50_000f
 
+    private var latestLux = -1f
     private var smoothedLux = -1f
     private var targetBrightness = -1
 
@@ -26,10 +27,14 @@ class BrightnessController(private val resolver: ContentResolver) {
         private const val MIN_LOG_SPAN = 0.3f
     }
 
+    // Light sensors only report on change, so this may not be called for long
+    // stretches. The EMA is advanced in tick() instead, from the latest reading.
     fun onLuxReading(lux: Float) {
-        smoothedLux = if (smoothedLux < 0f) lux
-                      else alpha * lux + (1f - alpha) * smoothedLux
-        targetBrightness = luxToBrightness(smoothedLux)
+        latestLux = lux
+        if (smoothedLux < 0f) {
+            smoothedLux = lux
+            targetBrightness = luxToBrightness(lux)
+        }
     }
 
     fun onCurveChanged() {
@@ -37,6 +42,10 @@ class BrightnessController(private val resolver: ContentResolver) {
     }
 
     fun tick() {
+        if (latestLux >= 0f && smoothedLux >= 0f) {
+            smoothedLux = alpha * latestLux + (1f - alpha) * smoothedLux
+            targetBrightness = luxToBrightness(smoothedLux)
+        }
         if (targetBrightness < 0) return
         val current = readBrightness()
         if (current == targetBrightness) return
