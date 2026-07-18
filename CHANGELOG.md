@@ -19,3 +19,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - Reaction speed range shifted 10× slower: EMA alpha now 0.001–0.01 (log-scale slider, default 0.003) instead of 0.01–0.30; the old slowest setting is the new fastest. Stored values from older versions are clamped into the new range
+
+### Fixed
+- Brightness could get stuck (e.g. never dimming to minimum in a dark room): the lux EMA was only advanced on sensor events, but light sensors stop reporting in static conditions. The EMA now advances every 200 ms tick toward the latest reading, making reaction speed time-based (~20 s time constant at Fast, ~3 min at Slow)
