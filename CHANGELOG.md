@@ -24,3 +24,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - Brightness could get stuck (e.g. never dimming to minimum in a dark room): the lux EMA was only advanced on sensor events, but light sensors stop reporting in static conditions. The EMA now advances every 200 ms tick toward the latest reading, making reaction speed time-based (~20 s time constant at Fast, ~3 min at Slow)
 - Persistent light changes no longer take many minutes to settle: when the raw reading stays >2× away from the smoothed value for over 10 s, the filter speeds up 20× (catch-up mode) until caught up. Brief changes (shadows, headlights) are still smoothed at the configured reaction speed
+- Minimum brightness lowered from 5/255 to 1/255: the Android brightness slider is gamma-corrected, so the old floor of 5 sat at ~20% slider position and immediately overrode any manually set lower brightness — the screen never went truly dim in the dark

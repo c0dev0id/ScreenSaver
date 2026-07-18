@@ -25,7 +25,11 @@ class BrightnessController(private val resolver: ContentResolver) {
         const val MIN_ALPHA = 0.001f
         const val MAX_ALPHA = 0.01f
         const val DEFAULT_ALPHA = 0.003f
-        private const val MIN_BRIGHTNESS = 5
+        // The Android brightness slider is gamma-corrected: linear value 5/255
+        // already sits at ~20% slider position and is visibly bright on some
+        // panels. 1 is the framework slider's own minimum (0 can mean "off"
+        // or be rejected depending on the display driver).
+        private const val MIN_BRIGHTNESS = 1
         private const val MAX_BRIGHTNESS = 255
         // Keep the curve's log-scale span from collapsing if dark/bright points cross
         private const val MIN_LOG_SPAN = 0.3f
