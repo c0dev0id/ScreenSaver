@@ -10,6 +10,8 @@ class BrightnessController(private val resolver: ContentResolver) {
 
     var alpha: Float = 0.05f
     var capFraction: Float = 1.0f
+    var darkLux: Float = 10f
+    var brightLux: Float = 50_000f
 
     private var smoothedLux = -1f
     private var targetBrightness = -1
@@ -17,7 +19,8 @@ class BrightnessController(private val resolver: ContentResolver) {
     companion object {
         private const val MIN_BRIGHTNESS = 5
         private const val MAX_BRIGHTNESS = 255
-        private const val LOG_MAX_LUX = 4.699f  // log10(50_000)
+        // Keep the curve's log-scale span from collapsing if dark/bright points cross
+        private const val MIN_LOG_SPAN = 0.3f
     }
 
     fun onLuxReading(lux: Float) {
@@ -26,7 +29,7 @@ class BrightnessController(private val resolver: ContentResolver) {
         targetBrightness = luxToBrightness(smoothedLux)
     }
 
-    fun onCapChanged() {
+    fun onCurveChanged() {
         if (smoothedLux >= 0f) targetBrightness = luxToBrightness(smoothedLux)
     }
 
@@ -53,7 +56,9 @@ class BrightnessController(private val resolver: ContentResolver) {
         (MAX_BRIGHTNESS * capFraction).toInt().coerceIn(MIN_BRIGHTNESS, MAX_BRIGHTNESS)
 
     private fun luxToBrightness(lux: Float): Int {
-        val fraction = (log10(lux.coerceAtLeast(1f)) / LOG_MAX_LUX).coerceIn(0f, 1f)
+        val logDark = log10(darkLux.coerceAtLeast(1f))
+        val logBright = log10(brightLux.coerceAtLeast(1f)).coerceAtLeast(logDark + MIN_LOG_SPAN)
+        val fraction = ((log10(lux.coerceAtLeast(1f)) - logDark) / (logBright - logDark)).coerceIn(0f, 1f)
         val max = maxBrightness()
         return (MIN_BRIGHTNESS + fraction * (max - MIN_BRIGHTNESS)).toInt()
     }

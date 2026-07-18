@@ -14,3 +14,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `BrightnessService`: foreground service managing light sensor, AC state detection, auto-off timer via `SCREEN_OFF_TIMEOUT`, screen wake on AC connect
 - `BootReceiver`: starts service on device boot
 - `MainActivity`: settings screen with sliders for brightness cap, reaction speed, and auto-off timer
+- Live light-sensor readout in the settings screen
+- Configurable dark point / light point for the brightness curve: below the dark point (default 10 lx) the screen stays at minimum brightness, above the light point (default 50k lx) it reaches maximum; both on log-scale sliders
