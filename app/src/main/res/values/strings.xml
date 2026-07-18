@@ -4,4 +4,5 @@
     <string name="start_service">Start</string>
     <string name="stop_service">Stop</string>
     <string name="permission_required">Write settings permission is required</string>
+    <string name="lux_unavailable">Light sensor: —</string>
 </resources>

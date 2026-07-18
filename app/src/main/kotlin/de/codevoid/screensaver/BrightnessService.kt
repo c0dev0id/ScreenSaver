@@ -42,6 +42,7 @@ class BrightnessService : Service(), SensorEventListener {
 
     private val tickRunnable = object : Runnable {
         override fun run() {
+            applyPrefs()
             controller.tick()
             handler.postDelayed(this, TICK_MS)
         }
@@ -92,7 +93,6 @@ class BrightnessService : Service(), SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent) {
-        controller.alpha = Prefs.emaAlpha
         controller.onLuxReading(event.values[0])
     }
 
@@ -104,28 +104,33 @@ class BrightnessService : Service(), SensorEventListener {
         val status = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         val plugged = status?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0
         onAc = plugged != 0
-        applyAcState()
+        applyPrefs()
     }
 
     private fun onAcConnected() {
         onAc = true
         handler.removeCallbacks(autoOffRunnable)
         restoreTimeout()
-        applyAcState()
+        applyPrefs()
         wakeScreen()
         updateNotification()
     }
 
     private fun onAcDisconnected() {
         onAc = false
-        applyAcState()
+        applyPrefs()
         scheduleAutoOff()
         updateNotification()
     }
 
-    private fun applyAcState() {
+    // Light sensors only report on change, so pref edits are picked up here
+    // (every tick) rather than waiting for the next sensor event.
+    private fun applyPrefs() {
+        controller.alpha = Prefs.emaAlpha
+        controller.darkLux = Prefs.darkLux
+        controller.brightLux = Prefs.brightLux
         controller.capFraction = if (onAc) 1.0f else Prefs.brightnessCap
-        controller.onCapChanged()
+        controller.onCurveChanged()
     }
 
     private fun scheduleAutoOff() {
