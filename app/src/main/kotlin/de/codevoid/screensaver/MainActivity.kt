@@ -108,11 +108,14 @@ class MainActivity : AppCompatActivity() {
     private fun setupSensitivitySlider() {
         val slider = findViewById<SeekBar>(R.id.slider_sensitivity)
         val label = findViewById<TextView>(R.id.label_sensitivity)
+        val min = BrightnessController.MIN_ALPHA
+        val max = BrightnessController.MAX_ALPHA
         slider.max = 100
-        slider.progress = ((Prefs.emaAlpha - 0.01f) / 0.29f * 100).toInt()
+        slider.progress =
+            (100 * log10(Prefs.emaAlpha / min) / log10(max / min)).roundToInt().coerceIn(0, 100)
         updateSensitivityLabel(label, Prefs.emaAlpha)
         slider.setOnSeekBarChangeListener(onChange { progress ->
-            val alpha = 0.01f + progress / 100f * 0.29f
+            val alpha = min * (max / min).pow(progress / 100f)
             Prefs.emaAlpha = alpha
             updateSensitivityLabel(label, alpha)
         })
@@ -159,8 +162,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateSensitivityLabel(tv: TextView, alpha: Float) {
         val desc = when {
-            alpha < 0.05f -> "Slow"
-            alpha < 0.15f -> "Medium"
+            alpha < 0.002f -> "Slow"
+            alpha < 0.005f -> "Medium"
             else -> "Fast"
         }
         tv.text = "Reaction speed: $desc"

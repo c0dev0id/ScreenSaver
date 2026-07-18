@@ -8,7 +8,7 @@ import kotlin.math.log10
 
 class BrightnessController(private val resolver: ContentResolver) {
 
-    var alpha: Float = 0.05f
+    var alpha: Float = DEFAULT_ALPHA
     var capFraction: Float = 1.0f
     var darkLux: Float = 10f
     var brightLux: Float = 50_000f
@@ -17,6 +17,9 @@ class BrightnessController(private val resolver: ContentResolver) {
     private var targetBrightness = -1
 
     companion object {
+        const val MIN_ALPHA = 0.001f
+        const val MAX_ALPHA = 0.01f
+        const val DEFAULT_ALPHA = 0.003f
         private const val MIN_BRIGHTNESS = 5
         private const val MAX_BRIGHTNESS = 255
         // Keep the curve's log-scale span from collapsing if dark/bright points cross

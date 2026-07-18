@@ -14,8 +14,10 @@ object Prefs {
         get() = prefs.getFloat("brightness_cap", 0.8f)
         set(v) = prefs.edit().putFloat("brightness_cap", v).apply()
 
+    // Clamped so values stored by older versions (range was 0.01-0.30) stay valid
     var emaAlpha: Float
-        get() = prefs.getFloat("ema_alpha", 0.05f)
+        get() = prefs.getFloat("ema_alpha", BrightnessController.DEFAULT_ALPHA)
+            .coerceIn(BrightnessController.MIN_ALPHA, BrightnessController.MAX_ALPHA)
         set(v) = prefs.edit().putFloat("ema_alpha", v).apply()
 
     var darkLux: Float

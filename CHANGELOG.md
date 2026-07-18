@@ -16,3 +16,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `MainActivity`: settings screen with sliders for brightness cap, reaction speed, and auto-off timer
 - Live light-sensor readout in the settings screen
 - Configurable dark point / light point for the brightness curve: below the dark point (default 10 lx) the screen stays at minimum brightness, above the light point (default 50k lx) it reaches maximum; both on log-scale sliders
+
+### Changed
+- Reaction speed range shifted 10× slower: EMA alpha now 0.001–0.01 (log-scale slider, default 0.003) instead of 0.01–0.30; the old slowest setting is the new fastest. Stored values from older versions are clamped into the new range
