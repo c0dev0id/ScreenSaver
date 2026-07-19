@@ -83,7 +83,7 @@ class BrightnessController(private val resolver: ContentResolver) {
     }
 
     private fun maxBrightness() =
-        (MAX_BRIGHTNESS * capFraction).toInt().coerceIn(MIN_BRIGHTNESS, MAX_BRIGHTNESS)
+        (MAX_BRIGHTNESS * capFraction.pow(GAMMA)).toInt().coerceIn(MIN_BRIGHTNESS, MAX_BRIGHTNESS)
 
     private fun logLux(lux: Float) = log10(lux.coerceAtLeast(1f))
 
