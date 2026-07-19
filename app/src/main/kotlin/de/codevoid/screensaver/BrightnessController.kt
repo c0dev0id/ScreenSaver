@@ -5,6 +5,7 @@ import android.provider.Settings
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.log10
+import kotlin.math.pow
 
 class BrightnessController(private val resolver: ContentResolver) {
 
@@ -37,6 +38,11 @@ class BrightnessController(private val resolver: ContentResolver) {
         private const val MAX_BRIGHTNESS = 255
         // Keep the curve's log-scale span from collapsing if dark/bright points cross
         private const val MIN_LOG_SPAN = 0.3f
+        // The brightness setting is linear backlight power, but perception is
+        // ~power^(1/2.2). Raising the curve fraction to GAMMA makes *perceived*
+        // brightness track the position between the dark and light points -
+        // without it, dim indoor light (40 lx) already looks ~65% bright.
+        private const val GAMMA = 2.2f
         private const val CATCHUP_DEVIATION = 0.3f  // log10 decades, ~2x
         private const val CATCHUP_DELAY_MS = 10_000L
         private val CATCHUP_DELAY_TICKS = (CATCHUP_DELAY_MS / TICK_MS).toInt()
@@ -95,7 +101,7 @@ class BrightnessController(private val resolver: ContentResolver) {
         val logBright = logLux(brightLux).coerceAtLeast(logDark + MIN_LOG_SPAN)
         val fraction = ((logLux(lux) - logDark) / (logBright - logDark)).coerceIn(0f, 1f)
         val max = maxBrightness()
-        return (MIN_BRIGHTNESS + fraction * (max - MIN_BRIGHTNESS)).toInt()
+        return (MIN_BRIGHTNESS + fraction.pow(GAMMA) * (max - MIN_BRIGHTNESS)).toInt()
     }
 
     private fun readBrightness(): Int =
