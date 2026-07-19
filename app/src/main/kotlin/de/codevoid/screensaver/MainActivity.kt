@@ -26,6 +26,8 @@ class MainActivity : AppCompatActivity() {
     private var sensorMaxLux = 0f  // 0 = unknown
     private var lightMaxLux = LIGHT_MAX_LUX  // light-point slider cap
 
+    private val serviceStateListener = { updateServiceState() }
+
     private val luxListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
             val range = if (sensorMaxLux > 0f) " (sensor max ${formatLux(sensorMaxLux)})" else ""
@@ -54,6 +56,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        BrightnessService.addStateListener(serviceStateListener)
         updateServiceState()
         lightSensor?.let {
             sensorManager.registerListener(luxListener, it, SensorManager.SENSOR_DELAY_UI)
@@ -75,6 +78,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
+        BrightnessService.removeStateListener(serviceStateListener)
         sensorManager.unregisterListener(luxListener)
         super.onPause()
     }

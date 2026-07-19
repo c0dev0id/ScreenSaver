@@ -235,7 +235,12 @@ class BrightnessService : Service(), SensorEventListener {
         private const val NOTIF_ID = 1
         private const val CHANNEL_ID = "brightness_service"
 
+        private val stateListeners = mutableListOf<() -> Unit>()
+
+        fun addStateListener(l: () -> Unit)    { stateListeners.add(l) }
+        fun removeStateListener(l: () -> Unit) { stateListeners.remove(l) }
+
         var isRunning = false
-            private set
+            private set(value) { field = value; stateListeners.forEach { it() } }
     }
 }
