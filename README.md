@@ -4,7 +4,7 @@ Manages screen brightness and power on Android tablets used for motorcycle navig
 
 ## The Problem
 
-Motorcycle navigation tablets run outside in direct sunlight at full brightness. When the motorcycle is turned off, the tablet stays on at full power — draining the battery completely within 30 minutes.
+Motorcycle navigation tablets run outside in direct sunlight at full brightness. When the motorcycle is turned off, the tablet keeps running at full power — draining its own battery rapidly. The top end of the brightness range also has sharply diminishing returns: the last 20% of brightness consumes a disproportionate share of screen power for little visible gain in daylight.
 
 ## What This App Does
 
