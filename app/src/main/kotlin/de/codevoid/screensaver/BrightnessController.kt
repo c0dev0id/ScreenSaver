@@ -65,8 +65,16 @@ class BrightnessController(private val resolver: ContentResolver) {
         val next = if (lastWritten < 0) {
             target
         } else {
-            val maxStep = ((MAX_BRIGHTNESS - MIN_BRIGHTNESS) / windowSize).coerceAtLeast(1)
-            target.coerceIn(lastWritten - maxStep, lastWritten + maxStep)
+            // Step limit in gamma (perceived) space so 1/windowSize always means
+            // 1/windowSize of perceived brightness range, not raw units.
+            // A raw step of 25 near the bottom looks like a 27% perceived jump;
+            // doing the clamp in gamma space keeps it perceptually uniform.
+            val max = maxBrightness()
+            val range = (max - MIN_BRIGHTNESS).toFloat().coerceAtLeast(1f)
+            val currentPos = ((lastWritten - MIN_BRIGHTNESS) / range).coerceIn(0f, 1f).pow(1f / GAMMA)
+            val targetPos  = ((target       - MIN_BRIGHTNESS) / range).coerceIn(0f, 1f).pow(1f / GAMMA)
+            val nextPos = targetPos.coerceIn(currentPos - 1f / windowSize, currentPos + 1f / windowSize)
+            (MIN_BRIGHTNESS + nextPos.pow(GAMMA) * range).toInt().coerceIn(MIN_BRIGHTNESS, max)
         }
         if (next != lastWritten) {
             writeBrightness(next)
