@@ -49,6 +49,15 @@ class BrightnessService : Service(), SensorEventListener {
         }
     }
 
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                Intent.ACTION_SCREEN_OFF -> handler.removeCallbacks(tickRunnable)
+                Intent.ACTION_SCREEN_ON  -> onScreenOn()
+            }
+        }
+    }
+
     private val tickRunnable = object : Runnable {
         override fun run() {
             applyPrefs()
@@ -89,10 +98,16 @@ class BrightnessService : Service(), SensorEventListener {
                 addAction(Intent.ACTION_POWER_CONNECTED)
                 addAction(Intent.ACTION_POWER_DISCONNECTED)
             }, RECEIVER_EXPORTED)
+            registerReceiver(screenReceiver, IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_OFF)
+                addAction(Intent.ACTION_SCREEN_ON)
+            }, RECEIVER_NOT_EXPORTED)
             lightSensor?.let {
                 sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
             }
-            handler.post(tickRunnable)
+            if (getSystemService(PowerManager::class.java).isInteractive) {
+                handler.post(tickRunnable)
+            }
         }
         return START_STICKY
     }
@@ -103,6 +118,7 @@ class BrightnessService : Service(), SensorEventListener {
         if (started) {
             sensorManager.unregisterListener(this)
             try { unregisterReceiver(acReceiver) } catch (_: Exception) {}
+            try { unregisterReceiver(screenReceiver) } catch (_: Exception) {}
         }
         restoreTimeout()
         super.onDestroy()
@@ -139,13 +155,17 @@ class BrightnessService : Service(), SensorEventListener {
         updateNotification()
     }
 
-    // Light sensors only report on change, so pref edits are picked up here
-    // (every tick) rather than waiting for the next sensor event.
     private fun applyPrefs() {
-        controller.alpha = Prefs.emaAlpha
+        controller.windowSize = Prefs.reactionWindow
         controller.darkLux = Prefs.darkLux
         controller.brightLux = Prefs.brightLux
         controller.capFraction = if (onAc) 1.0f else Prefs.brightnessCap
+    }
+
+    private fun onScreenOn() {
+        controller.resetBuffer()
+        handler.removeCallbacks(tickRunnable)
+        handler.post(tickRunnable)
     }
 
     private fun scheduleAutoOff() {
@@ -183,7 +203,7 @@ class BrightnessService : Service(), SensorEventListener {
         val power = if (onAc) "On AC — full brightness"
                     else "On battery — cap ${(Prefs.brightnessCap * 100).toInt()}%"
         return if (controller.targetBrightness >= 0)
-            "$power · ${formatLux(controller.smoothedLux)} → ${controller.targetBrightness}/255"
+            "$power · ${formatLux(controller.medianLux)} → ${controller.targetBrightness}/255"
         else power
     }
 

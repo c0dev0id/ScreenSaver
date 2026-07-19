@@ -81,7 +81,7 @@ class MainActivity : AppCompatActivity() {
         setupDarkPointSlider()
         setupLightPointSlider()
         setupCapSlider()
-        setupSensitivitySlider()
+        setupWindowSlider()
         setupAutoOffSlider()
     }
 
@@ -124,19 +124,17 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun setupSensitivitySlider() {
+    private fun setupWindowSlider() {
         val slider = findViewById<SeekBar>(R.id.slider_sensitivity)
         val label = findViewById<TextView>(R.id.label_sensitivity)
-        val min = BrightnessController.MIN_ALPHA
-        val max = BrightnessController.MAX_ALPHA
-        slider.max = 100
-        slider.progress =
-            (100 * log10(Prefs.emaAlpha / min) / log10(max / min)).roundToInt().coerceIn(0, 100)
-        updateSensitivityLabel(label, Prefs.emaAlpha)
+        val range = BrightnessController.MAX_WINDOW - BrightnessController.MIN_WINDOW
+        slider.max = range
+        slider.progress = Prefs.reactionWindow - BrightnessController.MIN_WINDOW
+        updateWindowLabel(label, Prefs.reactionWindow)
         slider.setOnSeekBarChangeListener(onChange { progress ->
-            val alpha = min * (max / min).pow(progress / 100f)
-            Prefs.emaAlpha = alpha
-            updateSensitivityLabel(label, alpha)
+            val window = progress + BrightnessController.MIN_WINDOW
+            Prefs.reactionWindow = window
+            updateWindowLabel(label, window)
         })
     }
 
@@ -179,13 +177,14 @@ class MainActivity : AppCompatActivity() {
         tv.text = "Battery brightness cap: ${(cap * 100).toInt()}%"
     }
 
-    private fun updateSensitivityLabel(tv: TextView, alpha: Float) {
+    private fun updateWindowLabel(tv: TextView, window: Int) {
+        val secs = window / 2
         val desc = when {
-            alpha < 0.05f -> "Slow"
-            alpha < 0.125f -> "Medium"
-            else -> "Fast"
+            window <= 15 -> "Fast"
+            window <= 32 -> "Medium"
+            else -> "Slow"
         }
-        tv.text = "Reaction speed: $desc"
+        tv.text = "Smoothing: $desc (${secs}s)"
     }
 
     private fun updateAutoOffLabel(tv: TextView, minutes: Int) {
