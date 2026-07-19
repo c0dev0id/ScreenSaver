@@ -18,13 +18,17 @@ class BrightnessController(private val resolver: ContentResolver) {
 
     var smoothedLux = -1f
         private set
-    var targetBrightness = -1
-        private set
+
+    val targetBrightness: Int
+        get() = if (smoothedLux < 0f) -1 else luxToBrightness(smoothedLux)
 
     companion object {
-        const val MIN_ALPHA = 0.001f
-        const val MAX_ALPHA = 0.01f
-        const val DEFAULT_ALPHA = 0.003f
+        const val TICK_MS = 5_000L
+        // Alpha applies once per 5 s tick; time constant = TICK_MS / alpha,
+        // i.e. ~20 s at MAX_ALPHA (Fast) and ~200 s at MIN_ALPHA (Slow).
+        const val MIN_ALPHA = 0.025f
+        const val MAX_ALPHA = 0.25f
+        const val DEFAULT_ALPHA = 0.075f
         // The Android brightness slider is gamma-corrected: linear value 5/255
         // already sits at ~20% slider position and is visibly bright on some
         // panels. 1 is the framework slider's own minimum (0 can mean "off"
@@ -33,39 +37,43 @@ class BrightnessController(private val resolver: ContentResolver) {
         private const val MAX_BRIGHTNESS = 255
         // Keep the curve's log-scale span from collapsing if dark/bright points cross
         private const val MIN_LOG_SPAN = 0.3f
-        private const val CATCHUP_DEVIATION = 0.3f     // log10 decades, ~2x
-        private const val CATCHUP_DELAY_TICKS = 50     // 10 s at 200 ms ticks
+        private const val CATCHUP_DEVIATION = 0.3f  // log10 decades, ~2x
+        private const val CATCHUP_DELAY_MS = 10_000L
+        private val CATCHUP_DELAY_TICKS = (CATCHUP_DELAY_MS / TICK_MS).toInt()
         private const val CATCHUP_FACTOR = 20f
-        private const val MAX_CATCHUP_ALPHA = 0.05f
+        private const val MAX_CATCHUP_ALPHA = 0.5f
     }
 
     // Light sensors only report on change, so this may not be called for long
     // stretches. The EMA is advanced in tick() instead, from the latest reading.
     fun onLuxReading(lux: Float) {
         latestLux = lux
-        if (smoothedLux < 0f) {
-            smoothedLux = lux
-            targetBrightness = luxToBrightness(lux)
-        }
-    }
-
-    fun onCurveChanged() {
-        if (smoothedLux >= 0f) targetBrightness = luxToBrightness(smoothedLux)
+        if (smoothedLux < 0f) smoothedLux = lux
     }
 
     fun tick() {
-        if (latestLux >= 0f && smoothedLux >= 0f) {
-            val a = effectiveAlpha()
+        if (smoothedLux >= 0f) {
+            // A pure EMA makes "slow reaction" mean slow even for permanent
+            // changes: walking into a dark room would take 15+ minutes to reach
+            // the dark target. When the raw reading stays far from the smoothed
+            // value (>2x, i.e. 0.3 log-decades) for more than 10 s, the change
+            // is not a passing shadow - speed the filter up until caught up.
+            val deviated = abs(logLux(latestLux) - logLux(smoothedLux)) > CATCHUP_DEVIATION
+            deviationTicks = if (deviated) deviationTicks + 1 else 0
+            val a = if (deviationTicks >= CATCHUP_DELAY_TICKS)
+                (alpha * CATCHUP_FACTOR).coerceAtMost(MAX_CATCHUP_ALPHA)
+            else alpha
             smoothedLux = a * latestLux + (1f - a) * smoothedLux
-            targetBrightness = luxToBrightness(smoothedLux)
         }
-        if (targetBrightness < 0) return
+        val target = targetBrightness
+        if (target < 0) return
         val current = readBrightness()
-        if (current == targetBrightness) return
-        val distance = targetBrightness - current
-        val step = ceil(abs(distance) * 0.1f).toInt().coerceAtLeast(1)
-        val next = if (distance > 0) (current + step).coerceAtMost(targetBrightness)
-                   else (current - step).coerceAtLeast(targetBrightness)
+        if (current == target) return
+        // Half the remaining distance per 5 s tick: target reached in ~4 ticks
+        val distance = target - current
+        val step = ceil(abs(distance) * 0.5f).toInt().coerceAtLeast(1)
+        val next = if (distance > 0) (current + step).coerceAtMost(target)
+                   else (current - step).coerceAtLeast(target)
         writeBrightness(next.coerceIn(MIN_BRIGHTNESS, maxBrightness()))
     }
 
@@ -77,26 +85,15 @@ class BrightnessController(private val resolver: ContentResolver) {
         )
     }
 
-    // A pure EMA makes "slow reaction" mean slow even for permanent changes:
-    // walking into a dark room would take 15+ minutes to reach the dark target.
-    // When the raw reading stays far from the smoothed value (>2x, i.e. 0.3
-    // log-decades) for more than 10 s, the change is not a passing shadow -
-    // speed the filter up until it has caught up.
-    private fun effectiveAlpha(): Float {
-        val deviation = abs(log10(latestLux + 1f) - log10(smoothedLux + 1f))
-        if (deviation > CATCHUP_DEVIATION) deviationTicks++ else deviationTicks = 0
-        return if (deviationTicks > CATCHUP_DELAY_TICKS)
-            (alpha * CATCHUP_FACTOR).coerceAtMost(MAX_CATCHUP_ALPHA)
-        else alpha
-    }
-
     private fun maxBrightness() =
         (MAX_BRIGHTNESS * capFraction).toInt().coerceIn(MIN_BRIGHTNESS, MAX_BRIGHTNESS)
 
+    private fun logLux(lux: Float) = log10(lux.coerceAtLeast(1f))
+
     private fun luxToBrightness(lux: Float): Int {
-        val logDark = log10(darkLux.coerceAtLeast(1f))
-        val logBright = log10(brightLux.coerceAtLeast(1f)).coerceAtLeast(logDark + MIN_LOG_SPAN)
-        val fraction = ((log10(lux.coerceAtLeast(1f)) - logDark) / (logBright - logDark)).coerceIn(0f, 1f)
+        val logDark = logLux(darkLux)
+        val logBright = logLux(brightLux).coerceAtLeast(logDark + MIN_LOG_SPAN)
+        val fraction = ((logLux(lux) - logDark) / (logBright - logDark)).coerceIn(0f, 1f)
         val max = maxBrightness()
         return (MIN_BRIGHTNESS + fraction * (max - MIN_BRIGHTNESS)).toInt()
     }

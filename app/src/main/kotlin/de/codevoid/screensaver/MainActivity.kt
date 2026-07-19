@@ -7,6 +7,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Button
 import android.widget.SeekBar
@@ -45,9 +46,17 @@ class MainActivity : AppCompatActivity() {
         lightSensor?.let {
             sensorManager.registerListener(luxListener, it, SensorManager.SENSOR_DELAY_UI)
         }
+        // One permission flow per resume; the next onResume picks up the other.
         if (!Settings.System.canWrite(this)) {
             Toast.makeText(this, getString(R.string.permission_required), Toast.LENGTH_LONG).show()
             startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                data = Uri.parse("package:$packageName")
+            })
+        } else if (!getSystemService(PowerManager::class.java)
+                .isIgnoringBatteryOptimizations(packageName)) {
+            // Doze must not throttle the service's tick loop on battery
+            @Suppress("BatteryLife")
+            startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                 data = Uri.parse("package:$packageName")
             })
         }
@@ -162,8 +171,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateSensitivityLabel(tv: TextView, alpha: Float) {
         val desc = when {
-            alpha < 0.002f -> "Slow"
-            alpha < 0.005f -> "Medium"
+            alpha < 0.05f -> "Slow"
+            alpha < 0.125f -> "Medium"
             else -> "Fast"
         }
         tv.text = "Reaction speed: $desc"
@@ -189,12 +198,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun progressToLux(progress: Int, minLux: Float, maxLux: Float): Float =
         10f.pow(log10(minLux) + progress / 100f * (log10(maxLux) - log10(minLux)))
-
-    private fun formatLux(lux: Float): String = when {
-        lux >= 10_000f -> "${(lux / 1_000f).roundToInt()}k lx"
-        lux >= 1_000f -> "%.1fk lx".format(lux / 1_000f)
-        else -> "${lux.roundToInt()} lx"
-    }
 
     companion object {
         private const val DARK_MIN_LUX = 1f
