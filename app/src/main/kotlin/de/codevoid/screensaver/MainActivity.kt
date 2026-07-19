@@ -22,11 +22,14 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var sensorManager: SensorManager
     private var lightSensor: Sensor? = null
+    private var sensorMaxLux = 0f  // 0 = unknown
+    private var lightMaxLux = LIGHT_MAX_LUX  // light-point slider cap
 
     private val luxListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
+            val range = if (sensorMaxLux > 0f) " (sensor max ${formatLux(sensorMaxLux)})" else ""
             findViewById<TextView>(R.id.label_current_lux).text =
-                "Light sensor: ${formatLux(event.values[0])}"
+                "Light sensor: ${formatLux(event.values[0])}$range"
         }
         override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
     }
@@ -37,6 +40,13 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         sensorManager = getSystemService(SensorManager::class.java)
         lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+        lightSensor?.let {
+            // A light point above what the sensor can report would make max
+            // brightness unreachable - cap the slider (and any stored value).
+            sensorMaxLux = it.maximumRange
+            lightMaxLux = sensorMaxLux.coerceIn(LIGHT_MIN_LUX * 2f, LIGHT_MAX_LUX)
+            if (Prefs.brightLux > lightMaxLux) Prefs.brightLux = lightMaxLux
+        }
         setupSliders()
         setupButtons()
     }
@@ -92,10 +102,10 @@ class MainActivity : AppCompatActivity() {
         val slider = findViewById<SeekBar>(R.id.slider_light_point)
         val label = findViewById<TextView>(R.id.label_light_point)
         slider.max = 100
-        slider.progress = luxToProgress(Prefs.brightLux, LIGHT_MIN_LUX, LIGHT_MAX_LUX)
+        slider.progress = luxToProgress(Prefs.brightLux, LIGHT_MIN_LUX, lightMaxLux)
         updateLightLabel(label, Prefs.brightLux)
         slider.setOnSeekBarChangeListener(onChange { progress ->
-            val lux = progressToLux(progress, LIGHT_MIN_LUX, LIGHT_MAX_LUX)
+            val lux = progressToLux(progress, LIGHT_MIN_LUX, lightMaxLux)
             Prefs.brightLux = lux
             updateLightLabel(label, lux)
         })
