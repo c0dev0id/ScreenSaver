@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Reaction speed range shifted 10× slower; the old slowest setting is the new fastest. Stored values from older versions are clamped into the new range
 - Tick period raised from 200 ms to 5 s; per-tick EMA alpha rescaled ×25 (0.025–0.25, default 0.075) so wall-clock reaction speeds are unchanged (~20 s time constant at Fast, ~3 min at Slow). Brightness steps half the remaining distance per tick
 - Brightness curve is gamma-corrected (log-fraction^2.2): the brightness setting is linear backlight power but perception is ~power^(1/2.2), so previously dim indoor light (40 lx) already looked ~65% bright — perceived brightness now tracks the position between the dark and light points
+- Brightness control replaced: EMA + catch-up mode replaced by a sliding median over a configurable window (10–50 ticks × 500 ms = 5–25 s). Tick rate changed from 5 s to 500 ms. Brightness is written directly to the target each tick (no step-ramping). The median's spike resistance makes catch-up mode unnecessary. Ticks stop on screen-off and resume on screen-on, resetting the ring buffer so the first post-wake tick is immediately correct.
 
 ### Fixed
 - Brightness could get stuck (e.g. never dimming to minimum in a dark room): the lux EMA was only advanced on sensor events, but light sensors stop reporting in static conditions. The EMA now advances every 200 ms tick toward the latest reading, making reaction speed time-based (~20 s time constant at Fast, ~3 min at Slow)
