@@ -61,7 +61,8 @@ class BrightnessController(private val resolver: ContentResolver) {
             bufferHead = (bufferHead + 1) % MAX_WINDOW
         }
         medianLux = median(windowSize)
-        val target = luxToBrightness(medianLux)
+        val max = maxBrightness()
+        val target = luxToBrightness(medianLux, max)
         val next = if (lastWritten < 0) {
             target
         } else {
@@ -69,7 +70,6 @@ class BrightnessController(private val resolver: ContentResolver) {
             // 1/windowSize of perceived brightness range, not raw units.
             // A raw step of 25 near the bottom looks like a 27% perceived jump;
             // doing the clamp in gamma space keeps it perceptually uniform.
-            val max = maxBrightness()
             val range = (max - MIN_BRIGHTNESS).toFloat().coerceAtLeast(1f)
             val currentPos = ((lastWritten - MIN_BRIGHTNESS) / range).coerceIn(0f, 1f).pow(1f / GAMMA)
             val targetPos  = ((target       - MIN_BRIGHTNESS) / range).coerceIn(0f, 1f).pow(1f / GAMMA)
@@ -95,11 +95,10 @@ class BrightnessController(private val resolver: ContentResolver) {
 
     private fun logLux(lux: Float) = log10(lux.coerceAtLeast(1f))
 
-    private fun luxToBrightness(lux: Float): Int {
+    private fun luxToBrightness(lux: Float, max: Int = maxBrightness()): Int {
         val logDark = logLux(darkLux)
         val logBright = logLux(brightLux).coerceAtLeast(logDark + MIN_LOG_SPAN)
         val fraction = ((logLux(lux) - logDark) / (logBright - logDark)).coerceIn(0f, 1f)
-        val max = maxBrightness()
         return (MIN_BRIGHTNESS + fraction.pow(GAMMA) * (max - MIN_BRIGHTNESS))
             .toInt().coerceIn(MIN_BRIGHTNESS, max)
     }

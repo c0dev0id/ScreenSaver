@@ -217,7 +217,6 @@ class MainActivity : AppCompatActivity() {
         override fun onStopTrackingTouch(bar: SeekBar) = Unit
     }
 
-    // Lux spans orders of magnitude, so the sliders work on a log10 scale.
     private fun luxToProgress(lux: Float, minLux: Float, maxLux: Float): Int =
         (100 * (log10(lux.coerceIn(minLux, maxLux)) - log10(minLux)) /
             (log10(maxLux) - log10(minLux))).roundToInt()
