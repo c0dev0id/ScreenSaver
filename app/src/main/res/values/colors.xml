@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="service_running">#4CAF50</color>
+    <color name="service_stopped">#9E9E9E</color>
+</resources>

@@ -14,6 +14,7 @@ import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -179,7 +180,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateWindowLabel(tv: TextView, window: Int) {
-        val secs = window / 2
+        val secs = (window * BrightnessController.TICK_MS / 1_000L).toInt()
         val desc = when {
             window <= 15 -> "Fast"
             window <= 32 -> "Medium"
@@ -192,10 +193,10 @@ class MainActivity : AppCompatActivity() {
         val tv = findViewById<TextView>(R.id.label_service_state)
         if (BrightnessService.isRunning) {
             tv.text = "● Running"
-            tv.setTextColor(0xFF4CAF50.toInt())
+            tv.setTextColor(ContextCompat.getColor(this, R.color.service_running))
         } else {
             tv.text = "○ Stopped"
-            tv.setTextColor(0xFF9E9E9E.toInt())
+            tv.setTextColor(ContextCompat.getColor(this, R.color.service_stopped))
         }
     }
 

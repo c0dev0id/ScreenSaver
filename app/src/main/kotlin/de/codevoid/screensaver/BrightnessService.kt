@@ -26,6 +26,7 @@ class BrightnessService : Service(), SensorEventListener {
     private lateinit var sensorManager: SensorManager
     private lateinit var handler: Handler
     private lateinit var controller: BrightnessController
+    private lateinit var notificationManager: NotificationManager
     private var lightSensor: Sensor? = null
     private var onAc = false
     private var started = false
@@ -68,6 +69,7 @@ class BrightnessService : Service(), SensorEventListener {
     }
 
     private val autoOffRunnable = Runnable { turnScreenOff() }
+    private val restoreTimeoutRunnable = Runnable { restoreTimeout() }
 
     override fun onCreate() {
         super.onCreate()
@@ -77,9 +79,9 @@ class BrightnessService : Service(), SensorEventListener {
         controller = BrightnessController(contentResolver)
         sensorManager = getSystemService(SensorManager::class.java)
         lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
-        val nm = getSystemService(NotificationManager::class.java)
-        if (nm.getNotificationChannel(CHANNEL_ID) == null) {
-            nm.createNotificationChannel(
+        notificationManager = getSystemService(NotificationManager::class.java)
+        if (notificationManager.getNotificationChannel(CHANNEL_ID) == null) {
+            notificationManager.createNotificationChannel(
                 NotificationChannel(CHANNEL_ID, "Brightness Service", NotificationManager.IMPORTANCE_LOW)
             )
         }
@@ -117,6 +119,7 @@ class BrightnessService : Service(), SensorEventListener {
         isRunning = false
         handler.removeCallbacks(tickRunnable)
         handler.removeCallbacks(autoOffRunnable)
+        handler.removeCallbacks(restoreTimeoutRunnable)
         if (started) {
             sensorManager.unregisterListener(this)
             try { unregisterReceiver(acReceiver) } catch (_: Exception) {}
@@ -181,8 +184,7 @@ class BrightnessService : Service(), SensorEventListener {
             contentResolver, AndroidSettings.System.SCREEN_OFF_TIMEOUT, 30_000)
         if (previousTimeout < 0) previousTimeout = current
         AndroidSettings.System.putInt(contentResolver, AndroidSettings.System.SCREEN_OFF_TIMEOUT, 1_000)
-        // Restore after the screen has gone dark
-        handler.postDelayed({ restoreTimeout() }, 5_000L)
+        handler.postDelayed(restoreTimeoutRunnable, 5_000L)
     }
 
     private fun restoreTimeout() {
@@ -209,8 +211,7 @@ class BrightnessService : Service(), SensorEventListener {
         else power
     }
 
-    private fun buildNotification(): Notification {
-        val text = notificationText()
+    private fun buildNotification(text: String = notificationText()): Notification {
         lastNotifiedText = text
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Screen Dimmer")
@@ -224,8 +225,9 @@ class BrightnessService : Service(), SensorEventListener {
     // Reposting an identical notification every tick would churn the shade
     // (and battery) for nothing — skip when the text is unchanged.
     private fun updateNotification() {
-        if (notificationText() == lastNotifiedText) return
-        getSystemService(NotificationManager::class.java).notify(NOTIF_ID, buildNotification())
+        val text = notificationText()
+        if (text == lastNotifiedText) return
+        notificationManager.notify(NOTIF_ID, buildNotification(text))
     }
 
     companion object {

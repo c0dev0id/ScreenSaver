@@ -14,6 +14,7 @@ class BrightnessController(private val resolver: ContentResolver) {
 
     private var latestLux = -1f
     private val luxBuffer = FloatArray(MAX_WINDOW)
+    private val scratchBuffer = FloatArray(MAX_WINDOW)
     private var bufferHead = 0
     private var bufferFilled = 0
     private var lastWritten = -1
@@ -97,12 +98,10 @@ class BrightnessController(private val resolver: ContentResolver) {
 
     private fun median(count: Int): Float {
         val n = count.coerceAtMost(MAX_WINDOW)
-        val samples = FloatArray(n) { i ->
-            luxBuffer[(bufferHead - 1 - i + MAX_WINDOW) % MAX_WINDOW]
-        }
-        samples.sort()
-        return if (n % 2 == 1) samples[n / 2]
-               else (samples[n / 2 - 1] + samples[n / 2]) / 2f
+        for (i in 0 until n) scratchBuffer[i] = luxBuffer[(bufferHead - 1 - i + MAX_WINDOW) % MAX_WINDOW]
+        scratchBuffer.sort(0, n)
+        return if (n % 2 == 1) scratchBuffer[n / 2]
+               else (scratchBuffer[n / 2 - 1] + scratchBuffer[n / 2]) / 2f
     }
 
     private fun writeBrightness(value: Int) {

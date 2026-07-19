@@ -4,10 +4,11 @@ import android.content.Context
 import android.content.SharedPreferences
 
 object Prefs {
+    private const val PREFS_NAME = "screensaver"
     private lateinit var prefs: SharedPreferences
 
     fun init(context: Context) {
-        prefs = context.applicationContext.getSharedPreferences("screensaver", Context.MODE_PRIVATE)
+        prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
     var brightnessCap: Float
