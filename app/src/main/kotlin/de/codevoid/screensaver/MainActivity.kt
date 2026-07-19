@@ -53,6 +53,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        updateServiceState()
         lightSensor?.let {
             sensorManager.registerListener(luxListener, it, SensorManager.SENSOR_DELAY_UI)
         }
@@ -185,6 +186,17 @@ class MainActivity : AppCompatActivity() {
             else -> "Slow"
         }
         tv.text = "Smoothing: $desc (${secs}s)"
+    }
+
+    private fun updateServiceState() {
+        val tv = findViewById<TextView>(R.id.label_service_state)
+        if (BrightnessService.isRunning) {
+            tv.text = "● Running"
+            tv.setTextColor(0xFF4CAF50.toInt())
+        } else {
+            tv.text = "○ Stopped"
+            tv.setTextColor(0xFF9E9E9E.toInt())
+        }
     }
 
     private fun updateAutoOffLabel(tv: TextView, minutes: Int) {

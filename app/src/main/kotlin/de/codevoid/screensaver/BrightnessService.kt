@@ -71,6 +71,7 @@ class BrightnessService : Service(), SensorEventListener {
 
     override fun onCreate() {
         super.onCreate()
+        isRunning = true
         Prefs.init(this)
         handler = Handler(Looper.getMainLooper())
         controller = BrightnessController(contentResolver)
@@ -113,6 +114,7 @@ class BrightnessService : Service(), SensorEventListener {
     }
 
     override fun onDestroy() {
+        isRunning = false
         handler.removeCallbacks(tickRunnable)
         handler.removeCallbacks(autoOffRunnable)
         if (started) {
@@ -230,5 +232,8 @@ class BrightnessService : Service(), SensorEventListener {
         const val ACTION_STOP = "de.codevoid.screensaver.STOP"
         private const val NOTIF_ID = 1
         private const val CHANNEL_ID = "brightness_service"
+
+        var isRunning = false
+            private set
     }
 }
