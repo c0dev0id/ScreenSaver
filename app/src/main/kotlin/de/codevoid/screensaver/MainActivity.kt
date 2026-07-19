@@ -1,11 +1,14 @@
 package de.codevoid.screensaver
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
@@ -62,14 +65,16 @@ class MainActivity : AppCompatActivity() {
             sensorManager.registerListener(luxListener, it, SensorManager.SENSOR_DELAY_UI)
         }
         // One permission flow per resume; the next onResume picks up the other.
-        if (!Settings.System.canWrite(this)) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
+        } else if (!Settings.System.canWrite(this)) {
             Toast.makeText(this, getString(R.string.permission_required), Toast.LENGTH_LONG).show()
             startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
                 data = Uri.parse("package:$packageName")
             })
         } else if (!getSystemService(PowerManager::class.java)
                 .isIgnoringBatteryOptimizations(packageName)) {
-            // Doze must not throttle the service's tick loop on battery
             @Suppress("BatteryLife")
             startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                 data = Uri.parse("package:$packageName")
