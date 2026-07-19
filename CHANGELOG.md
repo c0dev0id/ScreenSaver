@@ -26,7 +26,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Brightness curve is gamma-corrected (log-fraction^2.2): the brightness setting is linear backlight power but perception is ~power^(1/2.2), so previously dim indoor light (40 lx) already looked ~65% bright — perceived brightness now tracks the position between the dark and light points
 - Brightness control replaced: EMA + catch-up mode replaced by a sliding median over a configurable window (10–50 ticks × 500 ms = 5–25 s). Tick rate changed from 5 s to 500 ms. Brightness is written directly to the target each tick (no step-ramping). The median's spike resistance makes catch-up mode unnecessary. Ticks stop on screen-off and resume on screen-on, resetting the ring buffer so the first post-wake tick is immediately correct.
 
+### Added
+- POST_NOTIFICATIONS permission declared and requested at runtime (Android 13+); without it the foreground service notification was silently suppressed when the service started on boot
+
 ### Fixed
+- Screen timeout could be permanently locked to 1 s if the auto-off runnable fired while a timeout restore was already pending; turnScreenOff() now no-ops if a restore is already in progress
 - Brightness could get stuck (e.g. never dimming to minimum in a dark room): the lux EMA was only advanced on sensor events, but light sensors stop reporting in static conditions. The EMA now advances every 200 ms tick toward the latest reading, making reaction speed time-based (~20 s time constant at Fast, ~3 min at Slow)
 - Persistent light changes no longer take many minutes to settle: when the raw reading stays >2× away from the smoothed value for over 10 s, the filter speeds up 20× (catch-up mode) until caught up. Brief changes (shadows, headlights) are still smoothed at the configured reaction speed
 - Minimum brightness lowered from 5/255 to 1/255: the Android brightness slider is gamma-corrected, so the old floor of 5 sat at ~20% slider position and immediately overrode any manually set lower brightness — the screen never went truly dim in the dark

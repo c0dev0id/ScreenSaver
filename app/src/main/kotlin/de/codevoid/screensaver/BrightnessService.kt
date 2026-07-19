@@ -180,9 +180,10 @@ class BrightnessService : Service(), SensorEventListener {
     }
 
     private fun turnScreenOff() {
+        if (previousTimeout >= 0) return  // restore already pending
         val current = AndroidSettings.System.getInt(
             contentResolver, AndroidSettings.System.SCREEN_OFF_TIMEOUT, 30_000)
-        if (previousTimeout < 0) previousTimeout = current
+        previousTimeout = current
         AndroidSettings.System.putInt(contentResolver, AndroidSettings.System.SCREEN_OFF_TIMEOUT, 1_000)
         handler.postDelayed(restoreTimeoutRunnable, 5_000L)
     }

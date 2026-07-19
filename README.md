@@ -21,7 +21,8 @@ Brightness adapts to ambient light automatically using a sliding median filter o
 ## Setup
 
 1. Install the APK (download from Releases)
-2. Open the app and grant the two permissions it asks for:
+2. Open the app and grant the three permissions it asks for:
+   - **Notifications** — required to show the persistent service notification (Android 13+)
    - **Modify system settings** — required to control screen brightness
    - **Unrestricted battery usage** — required so Android doesn't throttle the brightness service while riding
 3. Tap **Start**
