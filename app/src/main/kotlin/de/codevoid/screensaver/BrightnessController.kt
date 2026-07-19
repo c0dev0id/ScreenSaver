@@ -61,9 +61,15 @@ class BrightnessController(private val resolver: ContentResolver) {
         }
         medianLux = median(windowSize)
         val target = luxToBrightness(medianLux)
-        if (target != lastWritten) {
-            writeBrightness(target)
-            lastWritten = target
+        val next = if (lastWritten < 0) {
+            target
+        } else {
+            val maxStep = ((MAX_BRIGHTNESS - MIN_BRIGHTNESS) / windowSize).coerceAtLeast(1)
+            target.coerceIn(lastWritten - maxStep, lastWritten + maxStep)
+        }
+        if (next != lastWritten) {
+            writeBrightness(next)
+            lastWritten = next
         }
     }
 
